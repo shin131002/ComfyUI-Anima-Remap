@@ -1,7 +1,7 @@
 [project]
 name = "anima-remap"
 description = "Auto block-index remapping for applying LoRAs and merging models across the Anima model family (Anima, Anima-2.9B, Anima-3.8B/Pro52, and future generations)"
-version = "1.1.0"
+version = "1.2.0"
 license = {file = "LICENSE"}
 
 classifiers = [

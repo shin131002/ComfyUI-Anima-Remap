@@ -30,15 +30,18 @@ ComfyUI-Anima-Remap/
 │   ├── expand_manifest_28_52_composed.json  # Anima→Anima-3.8B、上記2つから自動合成
 │   └── scripts/
 │       └── compose_manifests.py             # メンテナンス用ツール: 隣接世代のmanifestから全ペアを再生成する。ノード実行時には使用しない
-└── nodes/
-    ├── __init__.py                          # (空、パッケージ化のため)
-    ├── anima_common.py                      # 共通ロジック(層検出・manifest自動選択・マッピング計算)
-    ├── lora_remap_anima.py                  # LoRAタグローダー(自動リマップ)
-    ├── lora_remap_extended_anima.py         # LoRAタグローダー拡張版(実験的、前後ブレンド)
-    ├── model_merge_anima.py                 # モデルマージ(自動リマップ)
-    ├── model_merge_extended_anima.py        # モデルマージ拡張版(実験的、前後ブレンド)
-    ├── anima_random_lora_loader.py          # ランダムLoRAローダー、3フォルダ版(自動リマップ)
-    └── anima_filtered_random_lora_loader.py # ランダムLoRAローダー、1フォルダ+キーワードフィルタ版(自動リマップ)
+├── nodes/
+│   ├── __init__.py                          # (空、パッケージ化のため)
+│   ├── anima_common.py                      # 共通ロジック(層検出・manifest自動選択・マッピング計算)
+│   ├── lora_remap_anima.py                  # LoRAタグローダー(自動リマップ)
+│   ├── lora_remap_extended_anima.py         # LoRAタグローダー拡張版(実験的、前後ブレンド)
+│   ├── lora_autocomplete_api.py             # LoRA名入力補完のバックエンド(候補一覧・トリガーワード・プレビュー配信)
+│   ├── model_merge_anima.py                 # モデルマージ(自動リマップ)
+│   ├── model_merge_extended_anima.py        # モデルマージ拡張版(実験的、前後ブレンド)
+│   ├── anima_random_lora_loader.py          # ランダムLoRAローダー、3フォルダ版(自動リマップ)
+│   └── anima_filtered_random_lora_loader.py # ランダムLoRAローダー、1フォルダ+キーワードフィルタ版(自動リマップ)
+└── web/
+    └── anima_lora_autocomplete.js           # LoRA名入力補完のフロントエンド(ノード1・3のtext欄)
 ```
 
 ## インストール
@@ -124,6 +127,55 @@ git clone https://github.com/shin131002/ComfyUI-Anima-Remap.git
 サブフォルダを省略した場合に、異なるサブフォルダへ同名ファイルが存在すると、最初に見つかったものが使われ、候補を列挙した警告がログに出ます。特定の1つを指定したい場合はタグにサブフォルダを含めてください。
 
 名前がどうしても一致しなかった場合、警告メッセージにはComfyUIがLoRAフォルダを認識できているか(=名前の問題)、それとも0件と報告しているか(=フォルダ/パス設定の問題)が表示されます。
+
+### LoRA名の入力補完
+
+![LoRA名の入力補完](./images/07.jpg)
+
+ノード1・3(Tag Loaderの通常版とExtended版)のtext欄に直接入力している間、LoRAのファイル名を補完できます。
+
+1. ファイル名の一部を**3文字以上**入力すると、部分一致するLoRAの候補一覧が表示されます(大文字小文字は区別しません)
+2. `↑`/`↓`キーまたはマウスで候補を選ぶと、右側にプレビューとトリガーワードが表示されます
+3. `Enter`/`Tab`/クリックで決定すると、入力途中の文字列が`<lora:ファイル名:1>, トリガーワード`に置き換わります。`Esc`で一覧を閉じます
+
+```
+aaa  →  候補から aaabbb を選択  →  <lora:aaabbb:1>, ccc
+```
+
+- 候補は「ファイル名の前方一致 → ファイル名の部分一致 → サブフォルダ名の一致」の順に並びます
+- 挿入されるのは正式な形(ファイル名のみ)です。同名のファイルが複数のフォルダにある場合だけ、`<lora:char/aaabbb:1>`のようにサブフォルダ付きで挿入します
+- 既存の`<lora:...>`の中を編集しているときや、`0.85`のような数値を入力しているときは候補を出しません
+- 挿入後のテキストは普通の文字列なので、改行や強度の調整は自由に行えます
+- `_animaremap*`キャッシュファイルは候補に出ません
+- **text欄に前段のノードを接続している場合は動作しません**(入力欄が無いため)。接続時の動作は従来通りです
+
+![外部入力例](./images/08.jpg)
+
+
+#### トリガーワードの取得元
+
+以下の順に探し、最初に見つかったものを使います。
+
+1. `<LoRA名>.metadata.json`(LoRA Manager)の`civitai.trainedWords`
+2. `<LoRA名>.civitai.info` / `<LoRA名>.info`(Civitai Helper)の`trainedWords`
+3. LoRA本体に埋め込まれた`modelspec.trigger_word`
+
+複数の候補がある場合は、重複を除いてすべて挿入します。学習タグの集計(`ss_tag_frequency`)や学習時の出力名(`ss_output_name`)は、トリガーワードとして明示されたものではないため使用しません。
+
+#### プレビューの取得元
+
+LoRAと同じフォルダにある以下のファイルを、この順で探します。
+
+1. `<LoRA名>.preview.png` / `.webp` / `.jpg` / `.jpeg`(LoRA Manager)
+2. `<LoRA名>.png` / `.webp` / `.jpg` / `.jpeg`
+3. `<LoRA名>.preview.mp4` / `.preview.webm` / `.mp4` / `.webm`
+
+静止画があればそちらを優先します。動画は無音でループ再生されます。ブラウザがデコードできる形式に限られるため、HEVCのmp4などは表示されない場合があります。
+
+#### 補足
+
+- 候補一覧は30秒間キャッシュされます。LoRAを追加した直後に候補に出ない場合は、少し待ってからtext欄を選択し直してください
+- インストール・更新後はComfyUIを再起動した上で、ブラウザをスーパーリロード(`Ctrl+F5`)してください。通常のリロードでは古いJavaScriptがキャッシュから読まれ続けることがあります
 
 ### 自動判定のロジック(概要)
 

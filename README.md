@@ -30,15 +30,18 @@ ComfyUI-Anima-Remap/
 │   ├── expand_manifest_28_52_composed.json  # Anima -> Anima-3.8B, auto-composed from the two above
 │   └── scripts/
 │       └── compose_manifests.py             # Maintenance tool: regenerates every pairwise manifest from whatever adjacent-generation manifests exist. Not used at runtime by any node.
-└── nodes/
-    ├── __init__.py                          # (empty, makes this a proper package)
-    ├── anima_common.py                      # Shared logic (block detection, manifest auto-selection, mapping computation)
-    ├── lora_remap_anima.py                  # LoRA tag loader (auto remap)
-    ├── lora_remap_extended_anima.py         # LoRA tag loader, extended (experimental, front/back blend)
-    ├── model_merge_anima.py                 # Model merge (auto remap)
-    ├── model_merge_extended_anima.py        # Model merge, extended (experimental, front/back blend)
-    ├── anima_random_lora_loader.py          # Random LoRA loader, 3 folders (auto remap)
-    └── anima_filtered_random_lora_loader.py # Random LoRA loader, 1 folder + keyword filter (auto remap)
+├── nodes/
+│   ├── __init__.py                          # (empty, makes this a proper package)
+│   ├── anima_common.py                      # Shared logic (block detection, manifest auto-selection, mapping computation)
+│   ├── lora_remap_anima.py                  # LoRA tag loader (auto remap)
+│   ├── lora_remap_extended_anima.py         # LoRA tag loader, extended (experimental, front/back blend)
+│   ├── lora_autocomplete_api.py             # Backend for LoRA name autocomplete (candidate list, trigger words, preview serving)
+│   ├── model_merge_anima.py                 # Model merge (auto remap)
+│   ├── model_merge_extended_anima.py        # Model merge, extended (experimental, front/back blend)
+│   ├── anima_random_lora_loader.py          # Random LoRA loader, 3 folders (auto remap)
+│   └── anima_filtered_random_lora_loader.py # Random LoRA loader, 1 folder + keyword filter (auto remap)
+└── web/
+    └── anima_lora_autocomplete.js           # Frontend for LoRA name autocomplete (text box of Nodes 1 & 3)
 ```
 
 ## Installation
@@ -124,6 +127,54 @@ Several looser spellings are accepted too, so a name copied out of ComfyUI's own
 If you leave the subfolder out and two files in different subfolders share that filename, the first match is used and a warning naming all of the candidates is logged — include the subfolder in the tag to pick a specific one.
 
 When a name can't be matched at all, the warning says whether ComfyUI can see your LoRA folder (so the name is what's wrong) or reports zero LoRA files (so it's a folder/path configuration problem).
+
+### LoRA name autocomplete
+
+![LoRA name autocomplete](./images/07.jpg)
+
+While typing directly into the text box of Nodes 1 & 3 (the regular and Extended Tag Loaders), LoRA filenames can be autocompleted.
+
+1. Type **3 or more characters** of a filename and a list of partially matching LoRAs appears (case-insensitive)
+2. Highlight a candidate with `↑`/`↓` or the mouse to see its preview and trigger words on the right
+3. Press `Enter`/`Tab` or click to confirm — the fragment you typed is replaced with `<lora:filename:1>, trigger words`. `Esc` closes the list
+
+```
+aaa  →  pick aaabbb from the list  →  <lora:aaabbb:1>, ccc
+```
+
+- Candidates are ordered: filename prefix match → filename substring match → subfolder name match
+- The canonical form (bare filename) is inserted. Only when the same filename exists in more than one folder is the subfolder included, e.g. `<lora:char/aaabbb:1>`
+- No list is shown while editing inside an existing `<lora:...>` tag, or while typing a number such as `0.85`
+- The inserted text is ordinary text, so line breaks and weights can be edited freely afterward
+- `_animaremap*` cache files never appear as candidates
+- **It does not work when the text box is fed from an upstream node** (there is no text box to type into). Connected behaviour is unchanged
+
+![Connecting text from an upstream node](./images/08.jpg)
+
+#### Where trigger words come from
+
+Checked in this order; the first source that has any is used.
+
+1. `civitai.trainedWords` in `<LoRA name>.metadata.json` (LoRA Manager)
+2. `trainedWords` in `<LoRA name>.civitai.info` / `<LoRA name>.info` (Civitai Helper)
+3. `modelspec.trigger_word` embedded in the LoRA file itself
+
+When there are several, all of them are inserted with duplicates removed. Training-tag statistics (`ss_tag_frequency`) and the training output name (`ss_output_name`) are not used, since neither is an explicitly declared trigger word.
+
+#### Where previews come from
+
+The following files next to the LoRA are checked in this order:
+
+1. `<LoRA name>.preview.png` / `.webp` / `.jpg` / `.jpeg` (LoRA Manager)
+2. `<LoRA name>.png` / `.webp` / `.jpg` / `.jpeg`
+3. `<LoRA name>.preview.mp4` / `.preview.webm` / `.mp4` / `.webm`
+
+A still image takes priority when both exist. Videos play muted on a loop. Only formats your browser can decode are shown, so e.g. HEVC-encoded mp4 files may not display.
+
+#### Notes
+
+- The candidate list is cached for 30 seconds. If a newly added LoRA doesn't appear yet, wait a moment and click back into the text box
+- After installing or updating, restart ComfyUI and then hard-reload the browser (`Ctrl+F5`). A normal reload can keep serving the old JavaScript from the browser cache
 
 ### Auto-detection logic (overview)
 

@@ -18,6 +18,9 @@ from .nodes.anima_random_lora_loader import (
     NODE_CLASS_MAPPINGS as _RANDOM_LORA_NODE_CLASS_MAPPINGS,
     NODE_DISPLAY_NAME_MAPPINGS as _RANDOM_LORA_NODE_DISPLAY_NAME_MAPPINGS,
 )
+# Imported for its side effect: registers the /anima_remap/* routes used by the
+# LoRA autocomplete in the tag loader text box (web/anima_lora_autocomplete.js).
+from .nodes import lora_autocomplete_api  # noqa: F401
 from .nodes.anima_filtered_random_lora_loader import (
     NODE_CLASS_MAPPINGS as _FILTERED_RANDOM_LORA_NODE_CLASS_MAPPINGS,
     NODE_DISPLAY_NAME_MAPPINGS as _FILTERED_RANDOM_LORA_NODE_DISPLAY_NAME_MAPPINGS,
@@ -40,4 +43,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **_FILTERED_RANDOM_LORA_NODE_DISPLAY_NAME_MAPPINGS,
 }
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+WEB_DIRECTORY = "./web"
+
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
