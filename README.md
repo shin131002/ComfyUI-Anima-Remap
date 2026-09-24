@@ -76,6 +76,8 @@ After restarting, search for "Anima" in the node search (double-click the canvas
 - **Anima Model Merge Extended (Experimental)** — experimental, see below
 - **Anima Random LoRA Loader (28/40/52 Auto)** — folder-based random selection, 3 groups, see below
 - **Anima Filtered Random LoRA Loader (28/40/52 Auto)** — folder-based random selection, 1 folder + keyword filter, see below
+- **Apply Anima ControlNet-LLLite (Auto Remap)** — applies LLLite-type ControlNets to 28/40/52-block models, see below
+- **Anima VACE ControlNet Remap** — moves a VACE-type ControlNet's injection points to match 40/52-block models; requires the ComfyUI-Advanced-ControlNet fork, see below
 
 ---
 

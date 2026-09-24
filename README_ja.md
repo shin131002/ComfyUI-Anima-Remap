@@ -76,6 +76,8 @@ git clone https://github.com/shin131002/ComfyUI-Anima-Remap.git
 - **Anima Model Merge Extended (Experimental)** — 実験的機能。詳細は後述
 - **Anima Random LoRA Loader (28/40/52 Auto)** — フォルダ指定のランダム選択、3グループ。詳細は後述
 - **Anima Filtered Random LoRA Loader (28/40/52 Auto)** — フォルダ指定のランダム選択、1フォルダ+キーワードフィルタ。詳細は後述
+- **Apply Anima ControlNet-LLLite (Auto Remap)** — LLLite方式のControlNetを28/40/52層のモデルに適用。詳細は後述
+- **Anima VACE ControlNet Remap** — VACE方式のControlNetの注入先を40/52層のモデルに合わせて変換。ComfyUI-Advanced-ControlNetのフォーク版が必要。詳細は後述
 
 ---
 
