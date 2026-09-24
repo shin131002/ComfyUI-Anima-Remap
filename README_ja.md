@@ -454,7 +454,17 @@ LoRA Extended版のキャッシュファイルは、Extended版であること�
 
 ### 出力
 
-元のRandomLoRALoaderノードと同じ構成です: `MODEL`、`CLIP`、`positive_text`、`negative_text`、`positive`(CONDITIONING)、`negative`(CONDITIONING)、`preview`(IMAGE)。`positive_text`には選択された各LoRAが`<lora:名前:model強度:clip強度>, トリガーワード`の形式で含まれます(CONDITIONING出力に渡す前にLoRA構文は除去されます)。
+`MODEL`、`CLIP`、`positive_text`、`negative_text`、`positive`(CONDITIONING)、`negative`(CONDITIONING)、`preview`(IMAGE)、`lora_text`の8つです。
+
+- `positive_text`：追加プロンプトとトリガーワードのテキスト。`<lora:...>`は含まず、`positive`(CONDITIONING)にエンコードされる内容と完全に同じです。後段のテキストエンコーダーにそのまま繋げます
+- `lora_text`：追加プロンプトに、選択された各LoRAを`<lora:名前:model強度:clip強度>, トリガーワード`の形式で加えたもの。どのLoRAが選ばれたかをプロンプトとして記録したい場合や、メタデータ保存用です。テキストエンコーダーに繋ぐと`<lora:...>`の部分も文字として読まれてノイズになるので注意してください
+
+> ⚠️ **v1.4.0で`positive_text`の中身が変わりました。** 以前は`<lora:...>`を含んでいましたが、v1.4.0からは含みません。以前の内容は新しい出力`lora_text`(末尾に追加)から出ます。
+>
+> - `positive_text`をテキストエンコーダーに繋いでいた場合：つなぎ直しは不要です。`<lora:...>`がノイズとして読まれなくなるぶん、同じシードでも生成結果が変わることがあります
+> - `positive_text`をLoRA構文の記録(プロンプトの保存やメタデータ)に使っていた場合：`lora_text`につなぎ直してください
+>
+> 出力の番号と型はv1.4.0より前と同じなので、既存のワークフローの他の接続はそのまま使えます。
 
 ---
 

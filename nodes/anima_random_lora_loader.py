@@ -118,8 +118,14 @@ class AnimaRandomLoRALoader:
             }
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "CONDITIONING", "CONDITIONING", "IMAGE")
-    RETURN_NAMES = ("MODEL", "CLIP", "positive_text", "negative_text", "positive", "negative", "preview")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "CONDITIONING", "CONDITIONING", "IMAGE", "STRING")
+    # Slots 0-6 keep their pre-v1.4.0 positions and types, so saved workflows stay wired
+    # correctly (they link outputs by slot index). What changed in v1.4.0:
+    #   positive_text (slot 2) no longer contains <lora:...> tags -- it is exactly the text
+    #     encoded into `positive`, so it can go straight into a text encoder.
+    #   lora_text (slot 7, new) carries the old positive_text content, tags included,
+    #     for recording which LoRAs were picked.
+    RETURN_NAMES = ("MODEL", "CLIP", "positive_text", "negative_text", "positive", "negative", "preview", "lora_text")
     FUNCTION = "load_random_loras"
     CATEGORY = "loaders/anima/random"
 
@@ -321,7 +327,7 @@ class AnimaRandomLoRALoader:
         if not text:
             return text
         text = re.sub(r'<lora:[^>]+>', '', text)
-        text = re.sub(r',\s*,', ',', text)
+        text = re.sub(r',(\s*,)+', ',', text)
         return text.strip().strip(',').strip()
 
     # ------------------------------------------------------------------
@@ -620,9 +626,9 @@ class AnimaRandomLoRALoader:
             head = additional_prompt_positive.strip()
             if not head.endswith(','):
                 head += ','
-            positive_text_output = (head + "\n" + "\n".join(all_text_parts)) if all_text_parts else additional_prompt_positive.strip()
+            lora_text_output = (head + "\n" + "\n".join(all_text_parts)) if all_text_parts else additional_prompt_positive.strip()
         else:
-            positive_text_output = "\n".join(all_text_parts) if all_text_parts else ""
+            lora_text_output = "\n".join(all_text_parts) if all_text_parts else ""
 
         negative_parts = []
         if additional_prompt_negative.strip():
@@ -639,7 +645,11 @@ class AnimaRandomLoRALoader:
             if cleaned:
                 final_positive_parts.append(cleaned)
         final_positive_parts.extend(p for p in all_positive_parts if p)
-        positive_conditioning = self._encode_prompt(clip, ", ".join(final_positive_parts))
+        # positive_text output = exactly what is encoded into `positive`: the additional
+        # prompt with <lora:...> removed, plus the trigger words. Safe to feed straight
+        # into a text encoder, unlike lora_text whose <lora:...> tags would be tokenized.
+        positive_text_output = ", ".join(final_positive_parts)
+        positive_conditioning = self._encode_prompt(clip, positive_text_output)
 
         final_negative_parts = []
         if additional_prompt_negative.strip():
@@ -652,7 +662,8 @@ class AnimaRandomLoRALoader:
         preview_batch = self._generate_preview_batch(preview_images)
 
         return (model, clip, positive_text_output, negative_text_output,
-                positive_conditioning, negative_conditioning, preview_batch)
+                positive_conditioning, negative_conditioning, preview_batch,
+                lora_text_output)
 
 
 NODE_CLASS_MAPPINGS = {

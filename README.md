@@ -454,7 +454,17 @@ One folder plus keyword filtering, instead of three folder groups. Everything no
 
 ### Outputs
 
-Same shape as the original RandomLoRALoader nodes: `MODEL`, `CLIP`, `positive_text`, `negative_text`, `positive` (CONDITIONING), `negative` (CONDITIONING), `preview` (IMAGE). `positive_text` includes each selected LoRA as `<lora:name:model_strength:clip_strength>, trigger words` (LoRA syntax is stripped before it reaches the CONDITIONING outputs).
+Eight outputs: `MODEL`, `CLIP`, `positive_text`, `negative_text`, `positive` (CONDITIONING), `negative` (CONDITIONING), `preview` (IMAGE), `lora_text`.
+
+- `positive_text`: the additional prompt plus trigger words. It contains no `<lora:...>` tags and is exactly what gets encoded into `positive` (CONDITIONING), so it can go straight into a text encoder
+- `lora_text`: the additional prompt plus each selected LoRA as `<lora:name:model_strength:clip_strength>, trigger words`. Use it to record which LoRAs were picked, in a saved prompt or metadata. Feeding it into a text encoder makes the `<lora:...>` parts get read as text, which adds noise
+
+> ⚠️ **`positive_text` changed content in v1.4.0.** It used to include the `<lora:...>` tags; from v1.4.0 it doesn't. The previous content now comes from the new `lora_text` output (added last).
+>
+> - If `positive_text` fed a text encoder: no rewiring needed. Since the `<lora:...>` tags are no longer read as noise, results with the same seed may differ
+> - If `positive_text` was used to record the LoRA syntax (saved prompts, metadata): reconnect that to `lora_text`
+>
+> Output positions and types are the same as before v1.4.0, so all other connections in existing workflows keep working.
 
 ---
 
